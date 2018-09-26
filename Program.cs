@@ -8,31 +8,49 @@ using System.Threading.Tasks;
 
 namespace BlackJack
 {
-/*
- * TO DO
- * 
- * fix multiple aces bug
- * add betting system
- * add multiple playing decks
- * configure for multiplayer
- * (configure for online also)
- * SIMULATIONS
- * making compatible for running many thousands sim
- * add threading for the sims
- * add AI to recognize best betting strategy
-    */
+    /*
+     * TO DO
+     * 
+     * fix multiple aces bug [COMPLETED]
+     * add double down [COMPLETED]
+     * insurance? (never take insurance)
+     * add betting system [COMPLETED]
+     * add multiple playing decks
+     * add splitting
+     * configure for multiplayer
+     * configure for online
+     *  -add player saves
+     * SIMULATIONS
+     * making compatible for running many thousands sim
+     * add threading for the sims
+     * add AI to recognize best betting strategy
+        */
     class Program
     {
         private static bool playerBust = false;
         private static bool dealerBust = false;
         private static int playersMoney = 100;
         private static int dealersMoney = 100;
-        private static int bet = 10;
+        private static int bet;
        static List<Card> playersHand = new List<Card>();
+        static List<List<Card>> playersHands = new List<List<Card>>();
        static List<Card> dealersHand = new List<Card>();
         static void Main(string[] args)
         {
             runGame();
+        }
+        private static bool checkLoss()
+        {
+            if (playersMoney <= 0)
+            {
+                return true;
+            }
+            if (dealersMoney <= 0)
+            {
+                return true;
+            }
+
+            return false;
         }
         private static void runGame()
         {
@@ -40,16 +58,26 @@ namespace BlackJack
             List<Card> shuffledDeck = deck.getUnshuffledDeck();
             shuffledDeck.Shuffle();
             dealStartingCards(shuffledDeck);
+            askBet();
             while (hit(shuffledDeck) && !checkBust(playersHand))
             {
             }
             revealDealersCard(shuffledDeck);
 
-            while (checkHandValue(dealersHand) < 16 && !playerBust)
+            while (checkHandValue(dealersHand) <= 17 && !playerBust)
                 dealerHit(shuffledDeck);
 
             compareHands();
             Console.ReadKey();
+        }
+        private static void askBet()
+        {
+            Console.WriteLine("How much would you like to bet?");
+            if(!Int32.TryParse(Console.ReadLine(), out bet) || bet>playersMoney)
+            {
+                Console.WriteLine("Please enter a valid bet, up to {0}",playersMoney);
+                askBet();
+            }
         }
         private static void compareHands()
         {
@@ -57,29 +85,51 @@ namespace BlackJack
             {
                 playersMoney -= bet;
                 dealersMoney += bet;
-                Console.WriteLine("You are bust! Play another round? You: ${0} Dealer: ${1}", playersMoney,dealersMoney);
+
+                Console.WriteLine("You are bust! You: ${0} Dealer: ${1}", playersMoney,dealersMoney);
+                if (checkLoss())
+                {
+                    Console.WriteLine("You lost the game! Play another game?");
+                    nextGame();
+                }
             }
             else if (dealerBust)
             {
                 playersMoney += bet*2;
                 dealersMoney -= bet*2;
-                Console.WriteLine("You win - dealer is bust! Play another round? You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                Console.WriteLine("You win - dealer is bust! You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                if (checkLoss())
+                {
+                    Console.WriteLine("You won the game! Play another game?");
+                    nextGame();
+                }
             }
             else if (checkHandValue(playersHand) > checkHandValue(dealersHand))
             {
                 playersMoney += bet*2;
                 dealersMoney -= bet*2;
-                Console.WriteLine("You win - higher hand value than dealer! Play another round? You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                Console.WriteLine("You win - higher hand value than dealer! You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                if (checkLoss())
+                {
+                    Console.WriteLine("You win the game! Play another game?");
+                    nextGame();
+                }
             }
             else if (checkHandValue(playersHand) < checkHandValue(dealersHand))
             {
                 playersMoney -= bet;
                 dealersMoney += bet;
-                Console.WriteLine("You lose - The dealer's hand outvalues your hand! Play another round? You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                Console.WriteLine("You lose - The dealer's hand outvalues your hand! You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                if (checkLoss())
+                {
+
+                    Console.WriteLine("You lost the game! Play another game?");
+                    nextGame();
+                }
             }
             else if (checkHandValue(playersHand) == checkHandValue(dealersHand))
             {
-                Console.WriteLine("You tie with the dealer. Play another round? You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
+                Console.WriteLine("You tie with the dealer. You: ${0} Dealer: ${1}", playersMoney, dealersMoney);
             }
             else
             {
@@ -90,20 +140,26 @@ namespace BlackJack
 
         private static void nextRound()
         {
-            string input = Console.ReadLine().ToLower();
-            if(input == "yes")
-            {
+            Console.WriteLine("NEW ROUND");
                 dealersHand.Clear();
                 playersHand.Clear();
                 playerBust = false;
                 dealerBust = false;
                 runGame();
-
+        }
+        private static void nextGame()
+        {
+            string input = Console.ReadLine().ToLower();
+            if(input == "yes")
+            {
+                playersMoney = 100;
+                dealersMoney = 100;
+                nextRound();
             }
         }
         private static bool softAce(List<Card> hand)
         {
-            if(hand.Sum(i => i.Value>10? 10:i.Value) > 11) // if the hand is more than 11 then the ace cannot be 10 (in compareHands)
+            if(hand.Sum(i => i.Value>10? 10:i.Value) > 11) // if the hand is more than 11 then the ace cannot be 10 (in compareHands())
             return true;
 
             else return false;
@@ -113,6 +169,7 @@ namespace BlackJack
             int q = hand.Where(c => (c.Value == 1)).ToList().Count;
             return q;
         }
+        
 
         private static void revealDealersCard(List<Card> deck)
         {
@@ -156,19 +213,40 @@ namespace BlackJack
             }
             return val;
         }
-        private static bool hit(List<Card> deck)
+        private static bool checkSplit()
         {
+            if()
+            return false;
+        }
+        private static void splitCards()
+        {
+            
+        }
+        private static bool hit(List<Card> deck) 
+        {
+            String input = Console.ReadLine().ToLower();
+            if (checkSplit())
+            {
+                Console.WriteLine("hit,stick or split?");
+                if (input == "split")
+                {
+                    splitCards();
+                    return true;
+                }
+                else return false;
+            }
             Console.WriteLine("hit or stick?");
-           String input = Console.ReadLine().ToLower();
+
             if (checkBust(playersHand))
             {
                 return false;
             }
-            if (input == "hit"  || input == "h")
+            if (input == "hit" || input == "h")
             {
-               
+
+
                 playersHand.Add(deck.First());
-                Console.WriteLine("You hit: "+deck.First().Suit + " " + deck.First().Value);
+                Console.WriteLine("You hit: " + deck.First().Suit + " " + deck.First().Value);
                 deck.RemoveAt(0);
                 if (checkBust(playersHand))
                 {
@@ -176,6 +254,23 @@ namespace BlackJack
                 }
                 return true;
             }
+            if (input == "double" && playersHand.Count == 2)
+            {
+                bet *= 2;
+                playersHand.Add(deck.First());
+                Console.WriteLine("You double down: " + deck.First().Suit + " " + deck.First().Value);
+                deck.RemoveAt(0);
+                if (checkBust(playersHand))
+                {
+                    return false;
+                }
+                return false;
+            }
+            else if(input == "double" && playersHand.Count != 2)
+            {
+                Console.WriteLine("You can only double down after initial dealing");
+                return true;
+            } 
            
            else return false;
         }
